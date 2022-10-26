@@ -27,7 +27,7 @@ func (s *Statmap) Add(name string, bytes int) {
 
 func (s *Statmap) Print() {
 	for pod, v := range *s {
-		fmt.Printf("%s: %d\n", pod, v.AvgMem())
+		fmt.Printf("%s: %d (%d samples)\n", pod, v.AvgMem(), v.n)
 	}
 }
 
