@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	badger "github.com/dgraph-io/badger/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"log"
 	"time"
 )
 
@@ -14,12 +16,25 @@ const LoopInterval = 15 * time.Second
 func main() {
 	ctx := context.Background()
 
+	// Open the Badger database located in the ./badger directory.
+	// It will be created if it doesn't exist.
+	db, err := badger.Open(badger.DefaultOptions("badger"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func(db *badger.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(db)
+
 	clientset, err := getClientset()
 	if err != nil {
 		panic(err.Error())
 	}
 
-	statmap := NewStatMap()
+	statmap := NewStatMap(db)
 
 	loop(ctx, clientset, &statmap)
 }
