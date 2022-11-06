@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	badger "github.com/dgraph-io/badger/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"log"
@@ -16,13 +15,11 @@ const LoopInterval = 15 * time.Second
 func main() {
 	ctx := context.Background()
 
-	// Open the Badger database located in the ./badger directory.
-	// It will be created if it doesn't exist.
-	db, err := badger.Open(badger.DefaultOptions("badger"))
+	db, err := newStorage("badger")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func(db *badger.DB) {
+	defer func(db *storage) {
 		err := db.Close()
 		if err != nil {
 			log.Fatal(err)
@@ -39,7 +36,7 @@ func main() {
 	loop(ctx, clientset, &statmap)
 }
 
-func loop(ctx context.Context, clientset *kubernetes.Clientset, statmap *Statmap) {
+func loop(ctx context.Context, clientset *kubernetes.Clientset, statmap *StatMap) {
 	ticker := time.Tick(LoopInterval)
 	for ; true; <-ticker { // interesting hack to start right away
 		if err := loopStep(ctx, clientset, statmap); err != nil {
@@ -49,7 +46,7 @@ func loop(ctx context.Context, clientset *kubernetes.Clientset, statmap *Statmap
 	}
 }
 
-func loopStep(ctx context.Context, clientset *kubernetes.Clientset, statmap *Statmap) error {
+func loopStep(ctx context.Context, clientset *kubernetes.Clientset, statmap *StatMap) error {
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting nodes. %w", err)
@@ -65,7 +62,7 @@ func loopStep(ctx context.Context, clientset *kubernetes.Clientset, statmap *Sta
 	return nil
 }
 
-func populateStatMap(s *Statmap, summary nodeSummary) {
+func populateStatMap(s *StatMap, summary nodeSummary) {
 	for _, pod := range summary.Pods {
 		s.Add(pod.PodRef.Name, pod.Memory.WorkingSetBytes)
 	}
